@@ -21,8 +21,15 @@ def decode_attributed_body(attributed_body):
     except Exception as e:
         return f"Error decoding attributedBody: {e}"
 
+def clean_message(message):
+    # Define a regex pattern that captures everything after "+" and before " iI"
+    match = re.search(r'\+.*? (.*?) iI', message)
+    if match:
+        return match.group(1)  # Return only the part between "+" and "iI"
+    return message  # Return the original message if no match is found
+
 # Connect to the database
-conn = sqlite3.connect("path/to/chat.db")
+conn = sqlite3.connect("/path/to/chat.db")
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
@@ -45,8 +52,7 @@ FROM
     chat
     JOIN chat_message_join ON chat. "ROWID" = chat_message_join.chat_id
     JOIN message ON chat_message_join.message_id = message. "ROWID"
-WHERE 
-    message.date BETWEEN ? AND ?
+WHERE message.date BETWEEN ? AND ?
 ORDER BY
     message_date DESC;
 """
@@ -60,16 +66,19 @@ for row in cursor:
     is_from_me = row['is_from_me']
     chat_identifier = row['chat_identifier']
     
+    # Use attributed body if text is None, else use text
     if text is None and attributed_body is not None:
         decoded_text = decode_attributed_body(attributed_body)
     else:
         decoded_text = text
+
+    # Clean the message if needed (e.g., based on your previous request)
+    cleaned_message = clean_message(decoded_text)
     
     print(f"Date: {message_date}")
-    print(f"Message: {decoded_text}")
+    print(f"Message: {cleaned_message}")
     print(f"From me: {'Yes' if is_from_me else 'No'}")
     print(f"Chat: {chat_identifier}")
     print("---")
 
 conn.close()
-
